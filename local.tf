@@ -16,18 +16,13 @@ locals {
 
   default_iam_role_id    = concat(aws_iam_role.workers.*.id, [""])[0]
   default_ami_id_linux   = coalesce(local.workers_group_defaults.ami_id, data.aws_ami.eks_worker.id)
-  default_ami_id_windows = coalesce(local.workers_group_defaults.ami_id_windows, data.aws_ami.eks_worker_windows.id)
-
+    
   kubeconfig_name = var.kubeconfig_name == "" ? "eks_${var.cluster_name}" : var.kubeconfig_name
 
   worker_group_count                 = length(var.worker_groups)
   worker_group_launch_template_count = length(var.worker_groups_launch_template)
 
   worker_ami_name_filter = var.worker_ami_name_filter != "" ? var.worker_ami_name_filter : "amazon-eks-node-${var.cluster_version}-v*"
-  # Windows nodes are available from k8s 1.14. If cluster version is less than 1.14, fix ami filter to some constant to not fail on 'terraform plan'.
-  worker_ami_name_filter_windows = (var.worker_ami_name_filter_windows != "" ?
-    var.worker_ami_name_filter_windows : "Windows_Server-2019-English-Core-EKS_Optimized-${tonumber(var.cluster_version) >= 1.14 ? var.cluster_version : 1.14}-*"
-  )
 
   ec2_principal = "ec2.${data.aws_partition.current.dns_suffix}"
 
@@ -36,7 +31,6 @@ locals {
     name                          = "count.index"               # Name of the worker group. Literal count.index will never be used but if name is not set, the count.index interpolation will be used.
     tags                          = []                          # A list of map defining extra tags to be applied to the worker group autoscaling group.
     ami_id                        = ""                          # AMI ID for the eks linux based workers. If none is provided, Terraform will search for the latest version of their EKS optimized worker AMI based on platform.
-    ami_id_windows                = ""                          # AMI ID for the eks windows based workers. If none is provided, Terraform will search for the latest version of their EKS optimized worker AMI based on platform.
     asg_desired_capacity          = "1"                         # Desired worker capacity in the autoscaling group and changing its value will not affect the autoscaling group's desired capacity because the cluster-autoscaler manages up and down scaling of the nodes. Cluster-autoscaler add nodes when pods are in pending state and remove the nodes when they are not required by modifying the desirec_capacity of the autoscaling group. Although an issue exists in which if the value of the asg_min_size is changed it modifies the value of asg_desired_capacity.
     asg_max_size                  = "3"                         # Maximum worker capacity in the autoscaling group.
     asg_min_size                  = "1"                         # Minimum worker capacity in the autoscaling group. NOTE: Change in this paramater will affect the asg_desired_capacity, like changing its value to 2 will change asg_desired_capacity value to 2 but bringing back it to 1 will not affect the asg_desired_capacity.
